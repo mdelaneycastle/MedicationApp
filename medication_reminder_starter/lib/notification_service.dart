@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -60,15 +59,13 @@ class NotificationService {
     }
   }
 
-  static Future<void> scheduleDailyNotification(
+  static Future<void> scheduleOneTimeNotification(
     int id,
-    TimeOfDay timeOfDay,
+    DateTime scheduledTime,
     String body,
   ) async {
-    final tzTime = _nextInstanceOfTime(timeOfDay);
-
-    print('🧭 Current time: ${tz.TZDateTime.now(tz.local)}');
-    print('📅 Scheduling notification for: $tzTime');
+    final tz.TZDateTime tzTime = tz.TZDateTime.from(scheduledTime, tz.local);
+    print('📅 Scheduling one-time notification for: $tzTime');
 
     await _notificationsPlugin.zonedSchedule(
       id,
@@ -77,9 +74,9 @@ class NotificationService {
       tzTime,
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'test_channel', // TEMP: use test_channel for now
-          'Test Notifications',
-          channelDescription: 'Used for testing notifications',
+          'meds_channel',
+          'Medication Reminders',
+          channelDescription: 'Reminders to take your medication',
           importance: Importance.max,
           priority: Priority.high,
           visibility: NotificationVisibility.public,
@@ -88,7 +85,39 @@ class NotificationService {
       androidAllowWhileIdle: true,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      // matchDateTimeComponents: DateTimeComponents.time, // COMMENTED FOR DEBUG
+    );
+  }
+
+  static Future<void> scheduleDailyNotification(
+    int id,
+    TimeOfDay timeOfDay,
+    String body,
+  ) async {
+    final tzTime = _nextInstanceOfTime(timeOfDay);
+
+    final formattedTime = "${tzTime.hour.toString().padLeft(2, '0')}:${tzTime.minute.toString().padLeft(2, '0')}";
+    print('📅 Scheduling daily notification for: $tzTime');
+
+    await _notificationsPlugin.zonedSchedule(
+      id,
+      '💊 Medication Reminder',
+      body,
+      tzTime,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'test_channel',
+          'Test Notifications',
+          channelDescription: 'Used for testing notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+          visibility: NotificationVisibility.public,
+        ),
+      ),
+      androidAllowWhileIdle: true,
+      matchDateTimeComponents: DateTimeComponents.time, // ✅ Makes it repeat daily
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: formattedTime,
     );
   }
 
@@ -103,9 +132,9 @@ class NotificationService {
       timeOfDay.minute,
     );
 
-    // DEBUG: force schedule 1 minute in the future
-    if (scheduled.isBefore(now.add(const Duration(minutes: 1)))) {
-      scheduled = now.add(const Duration(minutes: 1));
+    // Ensure it's in the future
+    if (scheduled.isBefore(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
     }
 
     return scheduled;
@@ -116,26 +145,14 @@ class NotificationService {
     print('❌ All notifications cancelled');
   }
 
-  static Future<void> showTestNotification() async {
-    print('🧪 Showing test notification');
-
-    await _notificationsPlugin.show(
-      999,
-      '🧪 Test Notification',
-      'This is a test notification.',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'test_channel',
-          'Test Notifications',
-          channelDescription: 'Used for testing notifications',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-      ),
-    );
-  }
-
   static Future<List<PendingNotificationRequest>> getPendingNotifications() async {
-    return await _notificationsPlugin.pendingNotificationRequests();
+  try {
+    final list = await _notificationsPlugin.pendingNotificationRequests();
+    return list ?? [];
+  } catch (e, stack) {
+    print('⚠️ Error fetching pending notifications: $e');
+    print(stack);
+    return [];
   }
+}
 }

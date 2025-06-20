@@ -4,6 +4,7 @@ import 'camera_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'notification_service.dart';
 import 'settings_screen.dart';
+import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,8 +27,6 @@ class _MyAppState extends State<MyApp> {
   bool _isNotificationPermissionGranted = false;
   bool _isExactAlarmPermissionGranted = false;
   bool _permissionsChecked = false;
-  int _countdown = 0;
-  Timer? _countdownTimer;
 
   @override
   void initState() {
@@ -164,56 +163,6 @@ class _MyAppState extends State<MyApp> {
                   const SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: () async {
-                      final now = DateTime.now();
-                      final oneMinuteLater = TimeOfDay(
-                        hour: now.add(const Duration(minutes: 1)).hour,
-                        minute: now.add(const Duration(minutes: 1)).minute,
-                      );
-
-                      await NotificationService.scheduleDailyNotification(
-                        2,
-                        oneMinuteLater,
-                        "Time to take your meds! 💊",
-                      );
-
-                      setState(() {
-                        _countdown = 60;
-                      });
-
-                      _countdownTimer?.cancel();
-                      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-                        if (_countdown <= 0) {
-                          timer.cancel();
-                        } else {
-                          setState(() {
-                            _countdown--;
-                          });
-                        }
-                      });
-
-                      ScaffoldMessenger.of(builderContext).showSnackBar(
-                        const SnackBar(content: Text("⏰ Reminder set for 1 minute from now")),
-                      );
-                    },
-                    child: const Text("Trigger Reminder in 1 Minute"),
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                      NotificationService.showTestNotification();
-                    },
-                    child: const Text("Send Test Notification"),
-                  ),
-                  if (_countdown > 0)
-                    Text(
-                      "⏳ Notification in $_countdown seconds",
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    )
-                  else
-                    const Text("✅ Waiting for notification...", style: TextStyle(fontSize: 18)),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: () async {
                       final pendingNotifications =
                           await NotificationService.getPendingNotifications();
 
@@ -229,7 +178,10 @@ class _MyAppState extends State<MyApp> {
                             content: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: pendingNotifications
-                                  .map((p) => Text('ID: ${p.id}, Title: ${p.title ?? "No Title"}'))
+                                  .map((p) {
+                                    final payloadTime = p.payload != null ? p.payload! : "Unknown time";
+                                    return Text("💊 Reminder ${p.id + 1} at $payloadTime");
+                                  })
                                   .toList(),
                             ),
                             actions: [
