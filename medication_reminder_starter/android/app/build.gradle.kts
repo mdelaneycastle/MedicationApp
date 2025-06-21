@@ -31,6 +31,17 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+
+            // ✅ Enable ProGuard + Shrink Rules
+            isMinifyEnabled = true
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+
+            // ✅ Optional: Enable logs in release for debugging (you can remove later)
+            isDebuggable = true
         }
     }
 }
