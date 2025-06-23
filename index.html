@@ -14,37 +14,93 @@
     <button id="register">Register</button>
     <button id="login">Login</button>
 
+    <hr>
+    <h3>Add Secondary User</h3>
+    <input type="email" id="secondaryEmail" placeholder="Secondary user email">
+    <input type="password" id="secondaryPass" placeholder="Password">
+    <button id="addUserBtn">Add User</button>
+    <ul id="userList"></ul>
+
     <p id="status"></p>
   </div>
 
   <script type="module">
-    import { auth } from './firebase-init.js';
-    import {
-      createUserWithEmailAndPassword,
-      signInWithEmailAndPassword
-    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { auth } from './firebase-init.js';
+  import {
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword
+  } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
-    const email = document.getElementById('email');
-    const password = document.getElementById('password');
-    const status = document.getElementById('status');
+  import { db } from './firebase-init.js';
+  import {
+    collection,
+    addDoc,
+    query,
+    where,
+    getDocs
+  } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-    document.getElementById('register').onclick = async () => {
-      try {
-        const userCred = await createUserWithEmailAndPassword(auth, email.value, password.value);
-        status.textContent = `✅ Registered: ${userCred.user.email}`;
-      } catch (e) {
-        status.textContent = `❌ ${e.message}`;
-      }
+  const email = document.getElementById('email');
+  const password = document.getElementById('password');
+  const status = document.getElementById('status');
+
+  const secEmail = document.getElementById('secondaryEmail');
+  const secPass = document.getElementById('secondaryPass');
+  const userList = document.getElementById('userList');
+
+  // Register
+  document.getElementById('register').onclick = async () => {
+    try {
+      const userCred = await createUserWithEmailAndPassword(auth, email.value, password.value);
+      status.textContent = `✅ Registered: ${userCred.user.email}`;
+    } catch (e) {
+      status.textContent = `❌ ${e.message}`;
+    }
+  };
+
+  // Login
+  document.getElementById('login').onclick = async () => {
+    try {
+      const userCred = await signInWithEmailAndPassword(auth, email.value, password.value);
+      status.textContent = `✅ Logged in: ${userCred.user.email}`;
+    } catch (e) {
+      status.textContent = `❌ ${e.message}`;
+    }
+  };
+
+  // Add secondary user
+  document.getElementById('addUserBtn').onclick = async () => {
+    if (!auth.currentUser) return alert("Please log in first");
+
+    const userData = {
+      caregiver: auth.currentUser.email,
+      email: secEmail.value,
+      password: secPass.value // plaintext (we'll fix later)
     };
 
-    document.getElementById('login').onclick = async () => {
-      try {
-        const userCred = await signInWithEmailAndPassword(auth, email.value, password.value);
-        status.textContent = `✅ Logged in: ${userCred.user.email}`;
-      } catch (e) {
-        status.textContent = `❌ ${e.message}`;
-      }
-    };
-  </script>
+    await addDoc(collection(db, "secondaryUsers"), userData);
+    alert("Secondary user added!");
+    secEmail.value = '';
+    secPass.value = '';
+    loadUsers();
+  };
+
+  async function loadUsers() {
+    if (!auth.currentUser) return;
+    userList.innerHTML = "";
+
+    const q = query(collection(db, "secondaryUsers"), where("caregiver", "==", auth.currentUser.email));
+    const results = await getDocs(q);
+    results.forEach(doc => {
+      const li = document.createElement('li');
+      li.textContent = doc.data().email;
+      userList.appendChild(li);
+    });
+  }
+
+  auth.onAuthStateChanged(user => {
+    if (user) loadUsers();
+  });
+</script>
 </body>
 </html>
