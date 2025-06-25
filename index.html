@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Login/Register</title>
+  <title>Meds Reminder</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -21,6 +21,13 @@
     <button id="addUserBtn">Add User</button>
     <ul id="userList"></ul>
 
+    <hr>
+    <h3>Set Reminder for Selected User</h3>
+    <select id="userSelect"></select>
+    <input type="time" id="reminderTime">
+    <input type="text" id="medications" placeholder="Comma-separated medications">
+    <button id="saveReminder">Save Reminder</button>
+
     <p id="status"></p>
   </div>
 
@@ -37,7 +44,9 @@
     addDoc,
     query,
     where,
-    getDocs
+    getDocs,
+    setDoc,
+    doc
   } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
   const email = document.getElementById('email');
@@ -47,6 +56,7 @@
   const secEmail = document.getElementById('secondaryEmail');
   const secPass = document.getElementById('secondaryPass');
   const userList = document.getElementById('userList');
+  const userSelect = document.getElementById('userSelect');
 
   // Register
   document.getElementById('register').onclick = async () => {
@@ -75,7 +85,7 @@
     const userData = {
       caregiver: auth.currentUser.email,
       email: secEmail.value,
-      password: secPass.value // plaintext (we'll fix later)
+      password: secPass.value
     };
 
     await addDoc(collection(db, "secondaryUsers"), userData);
@@ -88,19 +98,45 @@
   async function loadUsers() {
     if (!auth.currentUser) return;
     userList.innerHTML = "";
+    userSelect.innerHTML = "";
 
     const q = query(collection(db, "secondaryUsers"), where("caregiver", "==", auth.currentUser.email));
     const results = await getDocs(q);
-    results.forEach(doc => {
+    results.forEach(docSnap => {
+      const data = docSnap.data();
       const li = document.createElement('li');
-      li.textContent = doc.data().email;
+      li.textContent = data.email;
       userList.appendChild(li);
+
+      const option = document.createElement('option');
+      option.value = docSnap.id;
+      option.textContent = data.email;
+      userSelect.appendChild(option);
     });
   }
+
+  async function saveReminder(secondaryUserDocId, reminderTime, meds) {
+    const reminderId = reminderTime.replace(":", "-");
+    await setDoc(doc(db, "secondaryUsers", secondaryUserDocId, "reminders", reminderId), {
+      time: reminderTime,
+      medications: meds.split(',').map(m => m.trim())
+    });
+  }
+
+  document.getElementById('saveReminder').onclick = async () => {
+    const userId = userSelect.value;
+    const time = document.getElementById('reminderTime').value;
+    const meds = document.getElementById('medications').value;
+    if (!userId || !time || !meds) return alert("Fill out all reminder fields.");
+    await saveReminder(userId, time, meds);
+    alert("Reminder saved!");
+    document.getElementById('reminderTime').value = '';
+    document.getElementById('medications').value = '';
+  };
 
   auth.onAuthStateChanged(user => {
     if (user) loadUsers();
   });
-</script>
+  </script>
 </body>
 </html>
