@@ -46,74 +46,164 @@
 <button id="saveRemindersBtn">Save Reminders</button>
 
 <script type="module">
+  import { auth } from './firebase-init.js';
+  import {
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword
+  } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+  import { db } from './firebase-init.js';
+  import {
+    collection,
+    addDoc,
+    query,
+    where,
+    getDocs,
+    setDoc,
+    doc
+  } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+  const email = document.getElementById('email');
+  const password = document.getElementById('password');
+  const status = document.getElementById('status');
+  const secEmail = document.getElementById('secondaryEmail');
+  const secPass = document.getElementById('secondaryPass');
+  const userList = document.getElementById('userList');
   const medName = document.getElementById('medName');
-  const medDose = document.getElementById('medDose');
+  const medDosage = document.getElementById('medDosage');
   const medList = document.getElementById('medList');
-  const addMedBtn = document.getElementById('addMedBtn');
+  const reminderCount = document.getElementById('reminderCount');
+  const reminderInputs = document.getElementById('reminderInputs');
 
-  const numRemindersInput = document.getElementById('numReminders');
-  const generateBtn = document.getElementById('generateRemindersBtn');
-  const reminderFields = document.getElementById('reminderFields');
-  const saveRemindersBtn = document.getElementById('saveRemindersBtn');
+  let selectedUserDocId = null;
+  let medications = [];
 
-  let secondaryUserId = null;
-  let meds = [];
-
-  async function getSecondaryUserIdByEmail(email) {
-    const q = query(collection(db, "secondaryUsers"), where("email", "==", email));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.length ? snapshot.docs[0].id : null;
-  }
-
-  addMedBtn.onclick = () => {
-    const entry = `${medName.value} ${medDose.value}`;
-    meds.push(entry);
-    const li = document.createElement('li');
-    li.textContent = entry;
-    medList.appendChild(li);
-    medName.value = '';
-    medDose.value = '';
-  };
-
-  generateBtn.onclick = () => {
-    reminderFields.innerHTML = '';
-    const count = parseInt(numRemindersInput.value);
-    for (let i = 0; i < count; i++) {
-      const container = document.createElement('div');
-      container.innerHTML = `
-        <label>Reminder ${i + 1} time:</label>
-        <input type="time" class="reminder-time">
-        <br>
-        <label>Select Medications:</label>
-        ${meds.map((m, idx) => `
-          <label><input type="checkbox" class="med-check" data-reminder="${i}" value="${m}"> ${m}</label>
-        `).join('<br>')}
-        <hr>
-      `;
-      reminderFields.appendChild(container);
+  document.getElementById('register').onclick = async () => {
+    try {
+      const userCred = await createUserWithEmailAndPassword(auth, email.value, password.value);
+      status.textContent = `✅ Registered: ${userCred.user.email}`;
+    } catch (e) {
+      status.textContent = `❌ ${e.message}`;
     }
   };
 
-  saveRemindersBtn.onclick = async () => {
-    const email = prompt("Enter secondary user's email to save reminders to:");
-    secondaryUserId = await getSecondaryUserIdByEmail(email);
-    if (!secondaryUserId) return alert("User not found");
+  document.getElementById('login').onclick = async () => {
+    try {
+      const userCred = await signInWithEmailAndPassword(auth, email.value, password.value);
+      status.textContent = `✅ Logged in: ${userCred.user.email}`;
+      loadUsers();
+    } catch (e) {
+      status.textContent = `❌ ${e.message}`;
+    }
+  };
 
-    const reminderDivs = reminderFields.querySelectorAll('div');
-    for (const div of reminderDivs) {
-      const timeInput = div.querySelector('.reminder-time');
-      const time = timeInput.value;
-      const selected = [...div.querySelectorAll('.med-check')].filter(cb => cb.checked).map(cb => cb.value);
-      if (time && selected.length) {
-        const reminderId = time.replace(':', '-');
-        await setDoc(doc(db, "secondaryUsers", secondaryUserId, "reminders", reminderId), {
+  document.getElementById('addUserBtn').onclick = async () => {
+    if (!auth.currentUser) return alert("Please log in first");
+
+    const userData = {
+      caregiver: auth.currentUser.email,
+      email: secEmail.value,
+      password: secPass.value
+    };
+
+    const docRef = await addDoc(collection(db, "secondaryUsers"), userData);
+    alert("Secondary user added!");
+    secEmail.value = '';
+    secPass.value = '';
+    loadUsers();
+  };
+
+  async function loadUsers() {
+    userList.innerHTML = "";
+    const q = query(collection(db, "secondaryUsers"), where("caregiver", "==", auth.currentUser.email));
+    const results = await getDocs(q);
+    results.forEach(docSnap => {
+      const li = document.createElement('li');
+      li.textContent = docSnap.data().email;
+      li.onclick = async () => {
+        selectedUserDocId = docSnap.id;
+        alert(`Selected ${docSnap.data().email}`);
+        await loadMedications();
+      };
+      userList.appendChild(li);
+    });
+  }
+
+  document.getElementById('addMedBtn').onclick = async () => {
+    if (!selectedUserDocId) return alert("Select a user first.");
+    const name = medName.value.trim();
+    const dose = medDosage.value.trim();
+    if (name && dose) {
+      const fullMed = `${name} ${dose}`;
+      await addDoc(collection(db, "secondaryUsers", selectedUserDocId, "medications"), {
+        name: name,
+        dosage: dose
+      });
+      medName.value = '';
+      medDosage.value = '';
+      await loadMedications();
+    }
+  };
+
+  async function loadMedications() {
+    if (!selectedUserDocId) return;
+    medications = [];
+    medList.innerHTML = '';
+    const q = collection(db, "secondaryUsers", selectedUserDocId, "medications");
+    const results = await getDocs(q);
+    results.forEach(docSnap => {
+      const data = docSnap.data();
+      const label = `${data.name} ${data.dosage}`;
+      medications.push(label);
+      const li = document.createElement('li');
+      li.textContent = label;
+      medList.appendChild(li);
+    });
+    buildReminderInputs(); // rebuild reminder section with checkboxes
+  }
+
+  reminderCount.oninput = () => {
+    buildReminderInputs();
+  };
+
+  function buildReminderInputs() {
+    reminderInputs.innerHTML = '';
+    const count = parseInt(reminderCount.value);
+    for (let i = 0; i < count; i++) {
+      const div = document.createElement('div');
+      const medsCheckboxes = medications.map((med, idx) =>
+        `<label><input type="checkbox" name="med-${i}" value="${med}"> ${med}</label><br>`
+      ).join('');
+      div.innerHTML = `
+        <label>Reminder ${i + 1} Time: <input type="time" id="time-${i}"></label><br>
+        ${medsCheckboxes}
+        <hr>
+      `;
+      reminderInputs.appendChild(div);
+    }
+  }
+
+  document.getElementById('saveReminders').onclick = async () => {
+    if (!selectedUserDocId) return alert("Select a secondary user first.");
+    const count = parseInt(reminderCount.value);
+    for (let i = 0; i < count; i++) {
+      const time = document.getElementById(`time-${i}`).value;
+      const selectedMeds = Array.from(document.querySelectorAll(`input[name="med-${i}"]:checked`))
+        .map(input => input.value);
+      if (time && selectedMeds.length > 0) {
+        const reminderId = time.replace(":", "-");
+        await setDoc(doc(db, "secondaryUsers", selectedUserDocId, "reminders", reminderId), {
           time,
-          medications: selected
+          medications: selectedMeds
         });
       }
     }
     alert("Reminders saved!");
   };
+
+  auth.onAuthStateChanged(user => {
+    if (user) loadUsers();
+  });
 </script>
 </body>
 </html>
