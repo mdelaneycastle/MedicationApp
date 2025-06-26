@@ -4,25 +4,55 @@
   <title>Meds Reminder</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    #overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(5px);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #loginModal {
+      background: white;
+      padding: 20px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    input, button {
+      margin: 5px;
+    }
+  </style>
 </head>
 <body>
   <h2>Meds Reminder</h2>
 
-  <!-- Login/Register -->
-   <div id="overlay">
+  <!-- Login/Register Modal -->
+  <div id="overlay">
     <div id="loginModal">
       <h2>Login or Register</h2>
       <input type="email" id="email" placeholder="Email" />
       <input type="password" id="password" placeholder="Password" />
+      <br>
       <button id="register">Register</button>
       <button id="login">Login</button>
       <p id="status"></p>
     </div>
   </div>
 
+  <!-- Main App UI -->
   <div id="loggedInContent" style="display:none;">
     <hr>
-    <!-- Add Secondary User -->
     <div>
       <h3>Add Secondary User</h3>
       <input type="email" id="secondaryEmail" placeholder="Secondary user email">
@@ -48,183 +78,183 @@
   </div>
 
   <script type="module">
-    import { auth } from './firebase-init.js';
-    import {
-      createUserWithEmailAndPassword,
-      signInWithEmailAndPassword
-    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    window.addEventListener('DOMContentLoaded', () => {
+      import('./firebase-init.js').then(({ auth, db }) => {
+        import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js').then(authLib => {
+          import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js').then(fsLib => {
+            const {
+              createUserWithEmailAndPassword,
+              signInWithEmailAndPassword,
+              onAuthStateChanged
+            } = authLib;
 
-    import { db } from './firebase-init.js';
-    import {
-      collection,
-      addDoc,
-      query,
-      where,
-      getDocs,
-      setDoc,
-      doc
-    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+            const {
+              collection, addDoc, getDocs, query, where, setDoc, doc
+            } = fsLib;
 
-    const email = document.getElementById('email');
-    const password = document.getElementById('password');
-    const status = document.getElementById('status');
-    const secEmail = document.getElementById('secondaryEmail');
-    const secPass = document.getElementById('secondaryPass');
-    const userList = document.getElementById('userList');
-    const medName = document.getElementById('medName');
-    const medDosage = document.getElementById('medDosage');
-    const medList = document.getElementById('medList');
-    const reminderCount = document.getElementById('numReminders');
-    const reminderInputs = document.getElementById('reminderFields');
+            const email = document.getElementById('email');
+            const password = document.getElementById('password');
+            const status = document.getElementById('status');
+            const secEmail = document.getElementById('secondaryEmail');
+            const secPass = document.getElementById('secondaryPass');
+            const userList = document.getElementById('userList');
+            const medName = document.getElementById('medName');
+            const medDosage = document.getElementById('medDosage');
+            const medList = document.getElementById('medList');
+            const reminderCount = document.getElementById('numReminders');
+            const reminderInputs = document.getElementById('reminderFields');
 
-    let selectedUserDocId = null;
-    let medications = [];
+            let selectedUserDocId = null;
+            let medications = [];
 
-    document.getElementById('register').onclick = async () => {
-      try {
-        const userCred = await createUserWithEmailAndPassword(auth, email.value, password.value);
-        status.textContent = `✅ Registered: ${userCred.user.email}`;
-      } catch (e) {
-        status.textContent = `❌ ${e.message}`;
-      }
-    };
+            document.getElementById('register').onclick = async () => {
+              try {
+                const userCred = await createUserWithEmailAndPassword(auth, email.value, password.value);
+                status.textContent = `✅ Registered: ${userCred.user.email}`;
+              } catch (e) {
+                status.textContent = `❌ ${e.message}`;
+              }
+            };
 
-    document.getElementById('login').onclick = async () => {
-      try {
-        const userCred = await signInWithEmailAndPassword(auth, email.value, password.value);
-        status.textContent = `✅ Logged in: ${userCred.user.email}`;
-        document.getElementById('overlay').style.display = 'none';
-        document.getElementById('loggedInContent').style.display = 'block';
-        loadUsers();
-      } catch (e) {
-        status.textContent = `❌ ${e.message}`;
-      }
-    };
+            document.getElementById('login').onclick = async () => {
+              try {
+                const userCred = await signInWithEmailAndPassword(auth, email.value, password.value);
+                status.textContent = `✅ Logged in: ${userCred.user.email}`;
+              } catch (e) {
+                status.textContent = `❌ ${e.message}`;
+              }
+            };
 
-    document.getElementById('addUserBtn').onclick = async () => {
-      if (!auth.currentUser) return alert("Please log in first");
-      const userData = {
-        caregiver: auth.currentUser.email,
-        email: secEmail.value,
-        password: secPass.value
-      };
-      await addDoc(collection(db, "secondaryUsers"), userData);
-      alert("Secondary user added!");
-      secEmail.value = '';
-      secPass.value = '';
-      loadUsers();
-    };
+            document.getElementById('addUserBtn').onclick = async () => {
+              if (!auth.currentUser) return alert("Please log in first");
+              const userData = {
+                caregiver: auth.currentUser.email,
+                email: secEmail.value,
+                password: secPass.value
+              };
+              await addDoc(collection(db, "secondaryUsers"), userData);
+              alert("Secondary user added!");
+              secEmail.value = '';
+              secPass.value = '';
+              loadUsers();
+            };
 
-    async function loadUsers() {
-      userList.innerHTML = "";
-      const q = query(collection(db, "secondaryUsers"), where("caregiver", "==", auth.currentUser.email));
-      const results = await getDocs(q);
-      results.forEach(docSnap => {
-        const li = document.createElement('li');
-        li.textContent = docSnap.data().email;
-        li.onclick = async () => {
-          selectedUserDocId = docSnap.id;
-          alert(`Selected ${docSnap.data().email}`);
-          await loadMedications();
-        };
-        userList.appendChild(li);
-      });
-}
+            async function loadUsers() {
+              userList.innerHTML = "";
+              const q = query(collection(db, "secondaryUsers"), where("caregiver", "==", auth.currentUser.email));
+              const results = await getDocs(q);
+              results.forEach(docSnap => {
+                const li = document.createElement('li');
+                li.textContent = docSnap.data().email;
+                li.onclick = async () => {
+                  selectedUserDocId = docSnap.id;
+                  alert(`Selected ${docSnap.data().email}`);
+                  await loadMedications();
+                };
+                userList.appendChild(li);
+              });
+            }
 
-    document.getElementById('addMedBtn').onclick = async () => {
-      if (!selectedUserDocId) return alert("Select a user first.");
-      const name = medName.value.trim();
-      const dose = medDosage.value.trim();
-      if (name && dose) {
-        await addDoc(collection(db, "secondaryUsers", selectedUserDocId, "medications"), {
-          name,
-          dosage: dose
-        });
-        medName.value = '';
-        medDosage.value = '';
-        await loadMedications();
-      }
-    };
+            document.getElementById('addMedBtn').onclick = async () => {
+              if (!selectedUserDocId) return alert("Select a user first.");
+              const name = medName.value.trim();
+              const dose = medDosage.value.trim();
+              if (name && dose) {
+                await addDoc(collection(db, "secondaryUsers", selectedUserDocId, "medications"), {
+                  name,
+                  dosage: dose
+                });
+                medName.value = '';
+                medDosage.value = '';
+                await loadMedications();
+              }
+            };
 
-    async function loadMedications() {
-      if (!selectedUserDocId) return;
-      medications = [];
-      medList.innerHTML = '';
-      const q = collection(db, "secondaryUsers", selectedUserDocId, "medications");
-      const results = await getDocs(q);
-      results.forEach(docSnap => {
-        const data = docSnap.data();
-        const label = `${data.name} ${data.dosage}`;
-        medications.push(label);
-        const li = document.createElement('li');
-        li.textContent = label;
-        medList.appendChild(li);
-      });
-      buildReminderInputs();
-    }
+            async function loadMedications() {
+              if (!selectedUserDocId) return;
+              medications = [];
+              medList.innerHTML = '';
+              const q = collection(db, "secondaryUsers", selectedUserDocId, "medications");
+              const results = await getDocs(q);
+              results.forEach(docSnap => {
+                const data = docSnap.data();
+                const label = `${data.name} ${data.dosage}`;
+                medications.push(label);
+                const li = document.createElement('li');
+                li.textContent = label;
+                medList.appendChild(li);
+              });
+              buildReminderInputs();
+            }
 
-    document.getElementById('generateRemindersBtn').onclick = () => {
-      buildReminderInputs();
-    };
+            document.getElementById('generateRemindersBtn').onclick = () => {
+              buildReminderInputs();
+            };
 
-    function buildReminderInputs() {
-      reminderInputs.innerHTML = '';
-      const count = parseInt(reminderCount.value);
-      for (let i = 0; i < count; i++) {
-        const div = document.createElement('div');
-        const medsCheckboxes = medications.map((med) =>
-          `<label><input type="checkbox" name="med-${i}" value="${med}"> ${med}</label><br>`
-        ).join('');
-        div.innerHTML = `
-          <label>Reminder ${i + 1} Time: <input type="text" class="reminder-time" id="time-${i}"></label><br>
-          ${medsCheckboxes}
-          <hr>
-        `;
-        reminderInputs.appendChild(div);
-        flatpickr(`#time-${i}`, {
-          enableTime: true,
-          noCalendar: true,
-          dateFormat: "H:i",
-          time_24hr: true
-        });
-      }
-    }
+            function buildReminderInputs() {
+              reminderInputs.innerHTML = '';
+              const count = parseInt(reminderCount.value);
+              for (let i = 0; i < count; i++) {
+                const div = document.createElement('div');
+                const medsCheckboxes = medications.map((med) =>
+                  `<label><input type="checkbox" name="med-${i}" value="${med}"> ${med}</label><br>`
+                ).join('');
+                div.innerHTML = `
+                  <label>Reminder ${i + 1} Time: <input type="text" class="reminder-time" id="time-${i}"></label><br>
+                  ${medsCheckboxes}
+                  <hr>
+                `;
+                reminderInputs.appendChild(div);
+                setTimeout(() => {
+                  flatpickr(`#time-${i}`, {
+                    enableTime: true,
+                    noCalendar: true,
+                    dateFormat: "H:i",
+                    time_24hr: true
+                  });
+                }, 0);
+              }
+            }
 
-    document.getElementById('saveRemindersBtn').onclick = async () => {
-      if (!selectedUserDocId) return alert("Select a secondary user first.");
-      const count = parseInt(reminderCount.value);
-      for (let i = 0; i < count; i++) {
-        const time = document.getElementById(`time-${i}`).value;
-        const selectedMeds = Array.from(document.querySelectorAll(`input[name="med-${i}"]:checked`))
-          .map(input => input.value);
-        if (time && selectedMeds.length > 0) {
-          const reminderId = time.replace(":", "-");
-          await setDoc(doc(db, "secondaryUsers", selectedUserDocId, "reminders", reminderId), {
-            time,
-            medications: selectedMeds
+            document.getElementById('saveRemindersBtn').onclick = async () => {
+              if (!selectedUserDocId) return alert("Select a secondary user first.");
+              const count = parseInt(reminderCount.value);
+              for (let i = 0; i < count; i++) {
+                const time = document.getElementById(`time-${i}`).value;
+                const selectedMeds = Array.from(document.querySelectorAll(`input[name="med-${i}"]:checked`))
+                  .map(input => input.value);
+                if (time && selectedMeds.length > 0) {
+                  const reminderId = time.replace(":", "-");
+                  await setDoc(doc(db, "secondaryUsers", selectedUserDocId, "reminders", reminderId), {
+                    time,
+                    medications: selectedMeds
+                  });
+                }
+              }
+              alert("Reminders saved!");
+            };
+
+            onAuthStateChanged(auth, user => {
+              const overlay = document.getElementById('overlay');
+              const loggedInContent = document.getElementById('loggedInContent');
+              if (user) {
+                overlay.style.display = 'none';
+                loggedInContent.style.display = 'block';
+                loadUsers();
+              } else {
+                overlay.style.display = 'flex';
+                loggedInContent.style.display = 'none';
+                userList.innerHTML = '';
+                selectedUserDocId = null;
+                medList.innerHTML = '';
+                reminderInputs.innerHTML = '';
+                medications = [];
+              }
+            });
           });
-        }
-      }
-      alert("Reminders saved!");
-    };
-
-    auth.onAuthStateChanged(user => {
-      const loggedInContent = document.getElementById('loggedInContent');
-      if (user) {
-        document.getElementById('overlay').style.display = 'none';
-        loggedInContent.style.display = 'block';
-        loadUsers();
-      } else {
-        document.getElementById('overlay').style.display = 'flex';
-        loggedInContent.style.display = 'none';
-        userList.innerHTML = '';
-        selectedUserDocId = null;
-        medList.innerHTML = '';
-        reminderInputs.innerHTML = '';
-        medications = [];
-      }
+        });
+      });
     });
-   
   </script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </body>
