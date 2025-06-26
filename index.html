@@ -209,14 +209,21 @@
     };
 
     auth.onAuthStateChanged(user => {
-      const loggedInContent = document.getElementById('loggedInContent');
-      if (user) {
-        loggedInContent.style.display = 'block';
-        loadUsers();
-      } else {
-        loggedInContent.style.display = 'none';
-        userList.innerHTML = '';
-      }
+  const loggedInContent = document.getElementById('loggedInContent');
+  if (user) {
+    document.getElementById('overlay').style.display = 'none';
+    loggedInContent.style.display = 'block';
+    loadUsers();
+  } else {
+    document.getElementById('overlay').style.display = 'flex';
+    loggedInContent.style.display = 'none';
+    userList.innerHTML = '';
+    selectedUserDocId = null;
+    medList.innerHTML = '';
+    reminderInputs.innerHTML = '';
+    medications = [];
+  }
+});
     });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
