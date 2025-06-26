@@ -9,7 +9,6 @@
 <body>
   <h2>Meds Reminder</h2>
 
-  <!-- Login/Register Modal -->
   <div id="overlay">
     <div id="loginModal">
       <h2>Login or Register</h2>
@@ -22,8 +21,8 @@
     </div>
   </div>
 
-  <!-- Main App UI -->
   <div id="loggedInContent" style="display:none;">
+    <button id="logout" style="float: right;">Logout</button>
     <hr>
     <div>
       <h3>Add Secondary User</h3>
@@ -57,7 +56,8 @@
             const {
               createUserWithEmailAndPassword,
               signInWithEmailAndPassword,
-              onAuthStateChanged
+              onAuthStateChanged,
+              signOut // ✅ Import signOut
             } = authLib;
 
             const {
@@ -78,6 +78,17 @@
 
             let selectedUserDocId = null;
             let medications = [];
+
+            // ✅ LOGOUT BUTTON LOGIC
+            document.getElementById('logout').onclick = async () => {
+              try {
+                await signOut(auth);
+                // The onAuthStateChanged observer will handle UI changes
+                status.textContent = 'You have been logged out.';
+              } catch (e) {
+                status.textContent = `❌ Error logging out: ${e.message}`;
+              }
+            };
 
             document.getElementById('register').onclick = async () => {
               try {
