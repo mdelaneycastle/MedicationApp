@@ -32,8 +32,8 @@
   <!-- Add below your existing HTML -->
 <hr>
 <h3>Add Medications</h3>
-<input type="text" id="medName" placeholder="Medication name">
-<input type="text" id="medDose" placeholder="Dose (e.g., 200mg)">
+<input type="text" id="medName" placeholder="Medication Name">
+<input type="text" id="medDosage" placeholder="Dosage (mg)">
 <button id="addMedBtn">Add Medication</button>
 <ul id="medList"></ul>
 
@@ -72,8 +72,8 @@
   const medName = document.getElementById('medName');
   const medDosage = document.getElementById('medDosage');
   const medList = document.getElementById('medList');
-  const reminderCount = document.getElementById('reminderCount');
-  const reminderInputs = document.getElementById('reminderInputs');
+  const reminderCount = document.getElementById('numReminders');
+  const reminderInputs = document.getElementById('reminderFields');
 
   let selectedUserDocId = null;
   let medications = [];
@@ -161,10 +161,11 @@
     });
     buildReminderInputs(); // rebuild reminder section with checkboxes
   }
-
+  window.addEventListener("DOMContentLoaded", () => {
   reminderCount.oninput = () => {
     buildReminderInputs();
   };
+  })
 
   function buildReminderInputs() {
     reminderInputs.innerHTML = '';
@@ -183,7 +184,7 @@
     }
   }
 
-  document.getElementById('saveReminders').onclick = async () => {
+    document.getElementById('saveRemindersBtn').onclick = async () => {
     if (!selectedUserDocId) return alert("Select a secondary user first.");
     const count = parseInt(reminderCount.value);
     for (let i = 0; i < count; i++) {
