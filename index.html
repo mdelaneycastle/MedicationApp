@@ -9,12 +9,15 @@
   <h2>Meds Reminder</h2>
 
   <!-- Login/Register -->
-  <div>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <button id="register">Register</button>
-    <button id="login">Login</button>
-    <p id="status"></p>
+   <div id="overlay">
+    <div id="loginModal">
+      <h2>Login or Register</h2>
+      <input type="email" id="email" placeholder="Email" />
+      <input type="password" id="password" placeholder="Password" />
+      <button id="register">Register</button>
+      <button id="login">Login</button>
+      <p id="status"></p>
+    </div>
   </div>
 
   <div id="loggedInContent" style="display:none;">
