@@ -93,6 +93,7 @@
       try {
         const userCred = await signInWithEmailAndPassword(auth, email.value, password.value);
         status.textContent = `✅ Logged in: ${userCred.user.email}`;
+        document.getElementById('overlay').style.display = 'none';
         document.getElementById('loggedInContent').style.display = 'block';
         loadUsers();
       } catch (e) {
