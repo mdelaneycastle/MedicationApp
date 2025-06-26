@@ -1,142 +1,115 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Meds Reminder</title>
+  <title>Carer Reminder Manager</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h2>Meds Reminder</h2>
+  <h2>Meds Reminder Manager</h2>
 
   <div>
     <input type="email" id="email" placeholder="Email" />
     <input type="password" id="password" placeholder="Password" />
-
-    <button id="register">Register</button>
     <button id="login">Login</button>
-
-    <hr>
-    <h3>Add Secondary User</h3>
-    <input type="email" id="secondaryEmail" placeholder="Secondary user email">
-    <input type="password" id="secondaryPass" placeholder="Password">
-    <button id="addUserBtn">Add User</button>
-    <ul id="userList"></ul>
-
-    <hr>
-    <h3>Set Reminder for Selected User</h3>
-    <select id="userSelect"></select>
-    <input type="time" id="reminderTime">
-    <input type="text" id="medications" placeholder="Comma-separated medications">
-    <button id="saveReminder">Save Reminder</button>
-
     <p id="status"></p>
   </div>
 
+  <hr>
+
+  <div id="medicationsSection" style="display:none">
+    <h3>Add Medication</h3>
+    <input id="medName" placeholder="Medication name" />
+    <input id="medDose" placeholder="Dose (e.g. 50mg)" />
+    <button id="addMed">Add</button>
+    <ul id="medList"></ul>
+  </div>
+
+  <div id="remindersSection" style="display:none">
+    <h3>Create Reminders</h3>
+    <label for="reminderCount">Reminders per day:</label>
+    <input type="number" id="reminderCount" value="1" min="1" />
+    <button id="generateReminders">Generate Inputs</button>
+
+    <form id="reminderForm"></form>
+    <button id="saveAllReminders">Save Reminders</button>
+  </div>
+
   <script type="module">
-  import { auth } from './firebase-init.js';
-  import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword
-  } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    import { auth, db } from './firebase-init.js';
+    import {
+      signInWithEmailAndPassword,
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    import {
+      collection,
+      setDoc,
+      doc
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-  import { db } from './firebase-init.js';
-  import {
-    collection,
-    addDoc,
-    query,
-    where,
-    getDocs,
-    setDoc,
-    doc
-  } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    const medList = [];
+    const medListEl = document.getElementById('medList');
 
-  const email = document.getElementById('email');
-  const password = document.getElementById('password');
-  const status = document.getElementById('status');
-
-  const secEmail = document.getElementById('secondaryEmail');
-  const secPass = document.getElementById('secondaryPass');
-  const userList = document.getElementById('userList');
-  const userSelect = document.getElementById('userSelect');
-
-  // Register
-  document.getElementById('register').onclick = async () => {
-    try {
-      const userCred = await createUserWithEmailAndPassword(auth, email.value, password.value);
-      status.textContent = `✅ Registered: ${userCred.user.email}`;
-    } catch (e) {
-      status.textContent = `❌ ${e.message}`;
-    }
-  };
-
-  // Login
-  document.getElementById('login').onclick = async () => {
-    try {
-      const userCred = await signInWithEmailAndPassword(auth, email.value, password.value);
-      status.textContent = `✅ Logged in: ${userCred.user.email}`;
-    } catch (e) {
-      status.textContent = `❌ ${e.message}`;
-    }
-  };
-
-  // Add secondary user
-  document.getElementById('addUserBtn').onclick = async () => {
-    if (!auth.currentUser) return alert("Please log in first");
-
-    const userData = {
-      caregiver: auth.currentUser.email,
-      email: secEmail.value,
-      password: secPass.value
+    document.getElementById('login').onclick = async () => {
+      try {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        await signInWithEmailAndPassword(auth, email, password);
+        document.getElementById('status').textContent = `Logged in as ${email}`;
+        document.getElementById('medicationsSection').style.display = 'block';
+        document.getElementById('remindersSection').style.display = 'block';
+      } catch (e) {
+        document.getElementById('status').textContent = `❌ ${e.message}`;
+      }
     };
 
-    await addDoc(collection(db, "secondaryUsers"), userData);
-    alert("Secondary user added!");
-    secEmail.value = '';
-    secPass.value = '';
-    loadUsers();
-  };
+    document.getElementById('addMed').onclick = () => {
+      const name = document.getElementById('medName').value;
+      const dose = document.getElementById('medDose').value;
+      if (name && dose) {
+        medList.push(`${name} ${dose}`);
+        const li = document.createElement('li');
+        li.textContent = `${name} ${dose}`;
+        medListEl.appendChild(li);
+        document.getElementById('medName').value = '';
+        document.getElementById('medDose').value = '';
+      }
+    };
 
-  async function loadUsers() {
-    if (!auth.currentUser) return;
-    userList.innerHTML = "";
-    userSelect.innerHTML = "";
+    document.getElementById('generateReminders').onclick = () => {
+      const count = parseInt(document.getElementById('reminderCount').value);
+      const form = document.getElementById('reminderForm');
+      form.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const div = document.createElement('div');
+        div.innerHTML = `
+          <label>Reminder ${i + 1} Time:</label>
+          <input type="time" class="reminder-time" />
+          <label>Medications:</label>
+          <select multiple class="med-select">
+            ${medList.map(med => `<option value="${med}">${med}</option>`).join('')}
+          </select>
+          <hr>
+        `;
+        form.appendChild(div);
+      }
+    };
 
-    const q = query(collection(db, "secondaryUsers"), where("caregiver", "==", auth.currentUser.email));
-    const results = await getDocs(q);
-    results.forEach(docSnap => {
-      const data = docSnap.data();
-      const li = document.createElement('li');
-      li.textContent = data.email;
-      userList.appendChild(li);
+    document.getElementById('saveAllReminders').onclick = async () => {
+      const user = auth.currentUser;
+      const reminderDivs = document.querySelectorAll('#reminderForm div');
+      const uid = user.uid;
 
-      const option = document.createElement('option');
-      option.value = docSnap.id;
-      option.textContent = data.email;
-      userSelect.appendChild(option);
-    });
-  }
-
-  async function saveReminder(secondaryUserDocId, reminderTime, meds) {
-    const reminderId = reminderTime.replace(":", "-");
-    await setDoc(doc(db, "secondaryUsers", secondaryUserDocId, "reminders", reminderId), {
-      time: reminderTime,
-      medications: meds.split(',').map(m => m.trim())
-    });
-  }
-
-  document.getElementById('saveReminder').onclick = async () => {
-    const userId = userSelect.value;
-    const time = document.getElementById('reminderTime').value;
-    const meds = document.getElementById('medications').value;
-    if (!userId || !time || !meds) return alert("Fill out all reminder fields.");
-    await saveReminder(userId, time, meds);
-    alert("Reminder saved!");
-    document.getElementById('reminderTime').value = '';
-    document.getElementById('medications').value = '';
-  };
-
-  auth.onAuthStateChanged(user => {
-    if (user) loadUsers();
-  });
+      for (const div of reminderDivs) {
+        const time = div.querySelector('.reminder-time').value;
+        const selected = [...div.querySelector('.med-select').selectedOptions].map(opt => opt.value);
+        if (time && selected.length) {
+          await setDoc(doc(db, 'secondaryUsers', uid, 'reminders', time.replace(':', '-')), {
+            time,
+            medications: selected
+          });
+        }
+      }
+      alert("Reminders saved!");
+    };
   </script>
 </body>
 </html>
