@@ -57,7 +57,7 @@
               createUserWithEmailAndPassword,
               signInWithEmailAndPassword,
               onAuthStateChanged,
-              signOut // ✅ Import signOut
+              signOut
             } = authLib;
 
             const {
@@ -79,11 +79,9 @@
             let selectedUserDocId = null;
             let medications = [];
 
-            // ✅ LOGOUT BUTTON LOGIC
             document.getElementById('logout').onclick = async () => {
               try {
                 await signOut(auth);
-                // The onAuthStateChanged observer will handle UI changes
                 status.textContent = 'You have been logged out.';
               } catch (e) {
                 status.textContent = `❌ Error logging out: ${e.message}`;
@@ -174,28 +172,53 @@
               buildReminderInputs();
             };
 
+            // ✅ REVISED AND MORE ROBUST FUNCTION
             function buildReminderInputs() {
-              reminderInputs.innerHTML = '';
+              reminderInputs.innerHTML = ''; // Clear previous fields
               const count = parseInt(reminderCount.value);
+              if (isNaN(count) || count < 1) return;
+
               for (let i = 0; i < count; i++) {
-                const div = document.createElement('div');
-                const medsCheckboxes = medications.map((med) =>
-                  `<label><input type="checkbox" name="med-${i}" value="${med}"> ${med}</label><br>`
-                ).join('');
-                div.innerHTML = `
-                  <label>Reminder ${i + 1} Time: <input type="text" class="reminder-time" id="time-${i}"></label><br>
-                  ${medsCheckboxes}
-                  <hr>
-                `;
-                reminderInputs.appendChild(div);
-                setTimeout(() => {
-                  flatpickr(`#time-${i}`, {
-                    enableTime: true,
-                    noCalendar: true,
-                    dateFormat: "H:i",
-                    time_24hr: true
-                  });
-                }, 0);
+                const container = document.createElement('div');
+                
+                // Create time input and its label
+                const timeLabel = document.createElement('label');
+                timeLabel.textContent = `Reminder ${i + 1} Time: `;
+                const timeInput = document.createElement('input');
+                timeInput.type = 'text';
+                timeInput.className = 'reminder-time';
+                timeInput.id = `time-${i}`;
+                timeLabel.appendChild(timeInput);
+                container.appendChild(timeLabel);
+                container.appendChild(document.createElement('br'));
+
+                // Create checkboxes for medications
+                medications.forEach(med => {
+                  const medLabel = document.createElement('label');
+                  const checkbox = document.createElement('input');
+                  checkbox.type = 'checkbox';
+                  checkbox.name = `med-${i}`;
+                  checkbox.value = med;
+                  
+                  medLabel.appendChild(checkbox);
+                  medLabel.appendChild(document.createTextNode(` ${med}`));
+                  container.appendChild(medLabel);
+                  container.appendChild(document.createElement('br'));
+                });
+
+                container.appendChild(document.createElement('hr'));
+                
+                // Add the new elements to the page
+                reminderInputs.appendChild(container);
+
+                // Initialize flatpickr directly on the new timeInput element
+                // No setTimeout is needed
+                flatpickr(timeInput, {
+                  enableTime: true,
+                  noCalendar: true,
+                  dateFormat: "H:i",
+                  time_24hr: true
+                });
               }
             }
 
@@ -203,9 +226,13 @@
               if (!selectedUserDocId) return alert("Select a secondary user first.");
               const count = parseInt(reminderCount.value);
               for (let i = 0; i < count; i++) {
-                const time = document.getElementById(`time-${i}`).value;
+                const timeEl = document.getElementById(`time-${i}`);
+                if (!timeEl) continue; // Skip if the element doesn't exist
+
+                const time = timeEl.value;
                 const selectedMeds = Array.from(document.querySelectorAll(`input[name="med-${i}"]:checked`))
                   .map(input => input.value);
+
                 if (time && selectedMeds.length > 0) {
                   const reminderId = time.replace(":", "-");
                   await setDoc(doc(db, "secondaryUsers", selectedUserDocId, "reminders", reminderId), {
