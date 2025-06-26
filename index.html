@@ -115,7 +115,6 @@
       userList.innerHTML = "";
       const q = query(collection(db, "secondaryUsers"), where("caregiver", "==", auth.currentUser.email));
       const results = await getDocs(q);
-      let firstUser = true;
       results.forEach(docSnap => {
         const li = document.createElement('li');
         li.textContent = docSnap.data().email;
@@ -125,12 +124,8 @@
           await loadMedications();
         };
         userList.appendChild(li);
-        if (firstUser) {
-          li.click(); // auto-select first user
-          firstUser = false;
-        }
       });
-    }
+}
 
     document.getElementById('addMedBtn').onclick = async () => {
       if (!selectedUserDocId) return alert("Select a user first.");
