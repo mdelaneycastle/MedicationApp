@@ -1,271 +1,530 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Meds Reminder</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meds Reminder</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Flatpickr CSS for time picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        /* Use Inter as the default font */
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+        .view-hidden {
+            display: none;
+        }
+    </style>
 </head>
-<body>
-  <h2>Meds Reminder</h2>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
 
-  <div id="overlay">
-    <div id="loginModal">
-      <h2>Login or Register</h2>
-      <input type="email" id="email" placeholder="Email" />
-      <input type="password" id="password" placeholder="Password" />
-      <br>
-      <button id="register">Register</button>
-      <button id="login">Login</button>
-      <p id="status"></p>
+    <!-- Login & Register Page Container -->
+    <div id="auth-page-container" class="flex items-center justify-center h-screen">
+        <div class="w-full max-w-md mx-auto p-4">
+            <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
+                <h1 class="text-2xl font-bold text-center mb-6">Meds Reminder</h1>
+                <form id="login-form">
+                    <div class="mb-4">
+                        <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
+                        <input type="email" id="email" name="email" required autocomplete="email"
+                               class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password</label>
+                        <input type="password" id="password" name="password" required autocomplete="current-password"
+                               class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button type="button" id="login-button" class="flex-1 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors">Login</button>
+                        <button type="button" id="register-button" class="flex-1 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-colors">Register</button>
+                    </div>
+                </form>
+                <p id="auth-status" class="text-red-500 text-center mt-4 text-sm h-4"></p>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div id="loggedInContent" style="display:none;">
-    <button id="logout" style="float: right;">Logout</button>
-    <hr>
-    <div>
-      <h3>Add Secondary User</h3>
-      <input type="email" id="secondaryEmail" placeholder="Secondary user email">
-      <input type="password" id="secondaryPass" placeholder="Password">
-      <button id="addUserBtn">Add User</button>
-      <ul id="userList"></ul>
+    <!-- Main App Page Container (Initially Hidden) -->
+    <div id="app-page-container" class="hidden">
+        <!-- Notification Banner -->
+        <div id="notification" class="hidden fixed top-5 right-5 bg-blue-500 text-white py-2 px-4 rounded-lg shadow-lg z-50 transition-opacity duration-300">
+            <p id="notification-message"></p>
+        </div>
+
+        <!-- Sidebar Menu -->
+        <div id="sidebar" class="fixed top-0 left-0 z-40 w-64 h-full bg-white dark:bg-gray-800 shadow-lg transform -translate-x-full transition-transform duration-300 ease-in-out">
+            <div class="flex flex-col h-full">
+                <div class="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-bold">Menu</h2>
+                    <button id="close-menu-btn" class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <nav class="mt-4 flex-grow">
+                    <a href="#dependants" data-view="dependants" class="nav-link block py-3 px-4 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg mx-2 transition-colors">Dependants</a>
+                    <a href="#medication" data-view="medication" class="nav-link block py-3 px-4 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg mx-2 transition-colors">Medication</a>
+                    <a href="#reminders" data-view="reminders" class="nav-link block py-3 px-4 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg mx-2 transition-colors">Reminders</a>
+                </nav>
+                <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                    <button id="logout-button" class="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transition-colors">Logout</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden"></div>
+
+        <!-- Main Content -->
+        <div class="flex flex-col h-screen">
+            <header class="bg-white dark:bg-gray-800 shadow p-4 flex items-center sticky top-0 z-20">
+                <button id="open-menu-btn" class="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h1 id="header-title" class="ml-4 text-xl font-semibold">Dashboard</h1>
+            </header>
+
+            <main class="flex-grow p-4 md:p-8 overflow-y-auto">
+                <div id="selected-user-banner" class="hidden mb-4 p-4 bg-blue-100 dark:bg-blue-900 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p class="font-semibold text-blue-800 dark:text-blue-200">Selected Dependant: <span id="selected-user-email"></span></p>
+                </div>
+
+                <!-- Dependants View -->
+                <div id="view-dependants" class="app-view">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                         <h3 class="text-xl font-bold mb-4">Add Dependant</h3>
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                            <input type="email" id="secondaryEmail" placeholder="Dependant's email" class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="password" id="secondaryPass" placeholder="Password for dependant" class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                         </div>
+                         <button id="addUserBtn" class="mt-4 w-full md:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Add Dependant</button>
+                    </div>
+                    <div class="mt-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                        <h3 class="text-xl font-bold mb-4">Your Dependants</h3>
+                        <ul id="userList" class="space-y-2"></ul>
+                    </div>
+                </div>
+
+                <!-- Medication View -->
+                <div id="view-medication" class="app-view view-hidden">
+                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                         <h3 class="text-xl font-bold mb-4">Add Medications</h3>
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                            <input type="text" id="medName" placeholder="Medication Name" class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="text" id="medDosage" placeholder="Dosage (e.g., 100mg)" class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                         </div>
+                         <button id="addMedBtn" class="mt-4 w-full md:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Add Medication</button>
+                    </div>
+                     <div class="mt-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                        <h3 class="text-xl font-bold mb-4">Current Medications</h3>
+                        <ul id="medList" class="space-y-2 list-disc list-inside"></ul>
+                    </div>
+                </div>
+
+                <!-- Reminders View -->
+                <div id="view-reminders" class="app-view view-hidden">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                        <h3 class="text-xl font-bold mb-4">Set Reminders</h3>
+                        <div class="flex items-center gap-4">
+                            <label for="numReminders" class="font-medium">Number of reminders per day:</label>
+                            <input type="number" id="numReminders" min="0" max="10" class="w-24 px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button id="generateRemindersBtn" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">Generate Fields</button>
+                        </div>
+                    </div>
+                    <div id="reminderFields" class="mt-6 space-y-6"></div>
+                    <div id="saveRemindersBtnContainer" class="mt-6 hidden">
+                         <button id="saveRemindersBtn" class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 text-lg font-bold">Save All Reminders</button>
+                    </div>
+                </div>
+            </main>
+        </div>
     </div>
 
-    <hr>
-    <h3>Add Medications</h3>
-    <input type="text" id="medName" placeholder="Medication Name">
-    <input type="text" id="medDosage" placeholder="Dosage (mg)">
-    <button id="addMedBtn">Add Medication</button>
-    <ul id="medList"></ul>
+    <!-- Load Firebase config from your external file -->
+    <script src="firebase-init.js"></script>
 
-    <hr>
-    <h3>Set Reminders</h3>
-    <label>Number of reminders per day:</label>
-    <input type="number" id="numReminders" min="1" max="10">
-    <button id="generateRemindersBtn">Generate Fields</button>
-    <div id="reminderFields"></div>
-    <button id="saveRemindersBtn">Save Reminders</button>
-  </div>
-
-  <script type="module">
-    window.addEventListener('DOMContentLoaded', () => {
-      import('./firebase-init.js').then(({ auth, db }) => {
-        import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js').then(authLib => {
-          import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js').then(fsLib => {
-            const {
-              createUserWithEmailAndPassword,
-              signInWithEmailAndPassword,
-              onAuthStateChanged,
-              signOut
-            } = authLib;
-
-            const {
-              collection, addDoc, getDocs, query, where, setDoc, doc
-            } = fsLib;
-
-            const email = document.getElementById('email');
-            const password = document.getElementById('password');
-            const status = document.getElementById('status');
-            const secEmail = document.getElementById('secondaryEmail');
-            const secPass = document.getElementById('secondaryPass');
-            const userList = document.getElementById('userList');
-            const medName = document.getElementById('medName');
-            const medDosage = document.getElementById('medDosage');
-            const medList = document.getElementById('medList');
-            const reminderCount = document.getElementById('numReminders');
-            const reminderInputs = document.getElementById('reminderFields');
-
-            let selectedUserDocId = null;
-            let medications = [];
-
-            document.getElementById('logout').onclick = async () => {
-              try {
-                await signOut(auth);
-                status.textContent = 'You have been logged out.';
-              } catch (e) {
-                status.textContent = `❌ Error logging out: ${e.message}`;
-              }
-            };
-
-            document.getElementById('register').onclick = async () => {
-              try {
-                const userCred = await createUserWithEmailAndPassword(auth, email.value, password.value);
-                status.textContent = `✅ Registered: ${userCred.user.email}`;
-              } catch (e) {
-                status.textContent = `❌ ${e.message}`;
-              }
-            };
-
-            document.getElementById('login').onclick = async () => {
-              try {
-                const userCred = await signInWithEmailAndPassword(auth, email.value, password.value);
-                status.textContent = `✅ Logged in: ${userCred.user.email}`;
-              } catch (e) {
-                status.textContent = `❌ ${e.message}`;
-              }
-            };
-
-            document.getElementById('addUserBtn').onclick = async () => {
-              if (!auth.currentUser) return alert("Please log in first");
-              const userData = {
-                caregiver: auth.currentUser.email,
-                email: secEmail.value,
-                password: secPass.value
-              };
-              await addDoc(collection(db, "secondaryUsers"), userData);
-              alert("Secondary user added!");
-              secEmail.value = '';
-              secPass.value = '';
-              loadUsers();
-            };
-
-            async function loadUsers() {
-              userList.innerHTML = "";
-              const q = query(collection(db, "secondaryUsers"), where("caregiver", "==", auth.currentUser.email));
-              const results = await getDocs(q);
-              results.forEach(docSnap => {
-                const li = document.createElement('li');
-                li.textContent = docSnap.data().email;
-                li.onclick = async () => {
-                  selectedUserDocId = docSnap.id;
-                  alert(`Selected ${docSnap.data().email}`);
-                  await loadMedications();
-                };
-                userList.appendChild(li);
-              });
+    <!-- Main Application Logic -->
+    <script type="module">
+        function main() {
+            if (typeof firebaseConfig === 'undefined') {
+                console.error("Firebase config is not loaded.");
+                document.body.innerHTML = '<div class="text-red-500 text-center p-8">Error: Firebase configuration not found.</div>';
+                return;
             }
 
-            document.getElementById('addMedBtn').onclick = async () => {
-              if (!selectedUserDocId) return alert("Select a user first.");
-              const name = medName.value.trim();
-              const dose = medDosage.value.trim();
-              if (name && dose) {
-                await addDoc(collection(db, "secondaryUsers", selectedUserDocId, "medications"), {
-                  name,
-                  dosage: dose
-                });
-                medName.value = '';
-                medDosage.value = '';
-                await loadMedications();
-              }
-            };
+            Promise.all([
+                import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"),
+                import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"),
+                import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js")
+            ]).then(([appModule, authModule, firestoreModule]) => {
 
-            async function loadMedications() {
-              if (!selectedUserDocId) return;
-              medications = [];
-              medList.innerHTML = '';
-              const q = collection(db, "secondaryUsers", selectedUserDocId, "medications");
-              const results = await getDocs(q);
-              results.forEach(docSnap => {
-                const data = docSnap.data();
-                const label = `${data.name} ${data.dosage}`;
-                medications.push(label);
-                const li = document.createElement('li');
-                li.textContent = label;
-                medList.appendChild(li);
-              });
-              buildReminderInputs();
-            }
+                const app = appModule.initializeApp(firebaseConfig);
+                const auth = authModule.getAuth(app);
+                const db = firestoreModule.getFirestore(app);
 
-            document.getElementById('generateRemindersBtn').onclick = () => {
-              buildReminderInputs();
-            };
+                // --- THIS IS THE NEW SECTION FOR SESSION PERSISTENCE ---
+                authModule.setPersistence(auth, authModule.browserLocalPersistence)
+                    .then(() => {
+                        console.log("Firebase auth persistence set to 'local'.");
+                        // The onAuthStateChanged listener will now handle the user's persisted state.
+                    })
+                    .catch((error) => {
+                        console.error("Error setting auth persistence:", error);
+                    });
+                // --- END OF NEW SECTION ---
 
-            // ✅ REVISED AND MORE ROBUST FUNCTION
-            function buildReminderInputs() {
-              reminderInputs.innerHTML = ''; // Clear previous fields
-              const count = parseInt(reminderCount.value);
-              if (isNaN(count) || count < 1) return;
 
-              for (let i = 0; i < count; i++) {
-                const container = document.createElement('div');
+                // --- DOM Element Refs ---
+                const emailInput = document.getElementById('email');
+                const passwordInput = document.getElementById('password');
+                const authStatus = document.getElementById('auth-status');
+                const secEmailInput = document.getElementById('secondaryEmail');
+                const secPassInput = document.getElementById('secondaryPass');
+                const userList = document.getElementById('userList');
+                const medNameInput = document.getElementById('medName');
+                const medDosageInput = document.getElementById('medDosage');
+                const medList = document.getElementById('medList');
+                const reminderCountInput = document.getElementById('numReminders');
+                const reminderInputsContainer = document.getElementById('reminderFields');
+                const saveRemindersBtnContainer = document.getElementById('saveRemindersBtnContainer');
+                const authPage = document.getElementById('auth-page-container');
+                const appPage = document.getElementById('app-page-container');
+                const notification = document.getElementById('notification');
+                const notificationMessage = document.getElementById('notification-message');
+                const selectedUserBanner = document.getElementById('selected-user-banner');
+                const selectedUserEmailSpan = document.getElementById('selected-user-email');
                 
-                // Create time input and its label
-                const timeLabel = document.createElement('label');
-                timeLabel.textContent = `Reminder ${i + 1} Time: `;
-                const timeInput = document.createElement('input');
-                timeInput.type = 'text';
-                timeInput.className = 'reminder-time';
-                timeInput.id = `time-${i}`;
-                timeLabel.appendChild(timeInput);
-                container.appendChild(timeLabel);
-                container.appendChild(document.createElement('br'));
+                let selectedUserDocId = null;
+                let medications = [];
 
-                // Create checkboxes for medications
-                medications.forEach(med => {
-                  const medLabel = document.createElement('label');
-                  const checkbox = document.createElement('input');
-                  checkbox.type = 'checkbox';
-                  checkbox.name = `med-${i}`;
-                  checkbox.value = med;
-                  
-                  medLabel.appendChild(checkbox);
-                  medLabel.appendChild(document.createTextNode(` ${med}`));
-                  container.appendChild(medLabel);
-                  container.appendChild(document.createElement('br'));
-                });
-
-                container.appendChild(document.createElement('hr'));
-                
-                // Add the new elements to the page
-                reminderInputs.appendChild(container);
-
-                // Initialize flatpickr directly on the new timeInput element
-                // No setTimeout is needed
-                flatpickr(timeInput, {
-                  enableTime: true,
-                  noCalendar: true,
-                  dateFormat: "H:i",
-                  time_24hr: true
-                });
-              }
-            }
-
-            document.getElementById('saveRemindersBtn').onclick = async () => {
-              if (!selectedUserDocId) return alert("Select a secondary user first.");
-              const count = parseInt(reminderCount.value);
-              for (let i = 0; i < count; i++) {
-                const timeEl = document.getElementById(`time-${i}`);
-                if (!timeEl) continue; // Skip if the element doesn't exist
-
-                const time = timeEl.value;
-                const selectedMeds = Array.from(document.querySelectorAll(`input[name="med-${i}"]:checked`))
-                  .map(input => input.value);
-
-                if (time && selectedMeds.length > 0) {
-                  const reminderId = time.replace(":", "-");
-                  await setDoc(doc(db, "secondaryUsers", selectedUserDocId, "reminders", reminderId), {
-                    time,
-                    medications: selectedMeds
-                  });
+                // --- Helpers ---
+                function showNotification(message, isError = false) {
+                    notificationMessage.textContent = message;
+                    notification.classList.remove('hidden', 'bg-red-500', 'bg-blue-500');
+                    notification.classList.add(isError ? 'bg-red-500' : 'bg-blue-500');
+                    setTimeout(() => notification.classList.add('hidden'), 3000);
                 }
-              }
-              alert("Reminders saved!");
-            };
+                
+                const views = document.querySelectorAll('.app-view');
+                const navLinks = document.querySelectorAll('.nav-link');
+                const headerTitle = document.getElementById('header-title');
 
-            onAuthStateChanged(auth, user => {
-              const overlay = document.getElementById('overlay');
-              const loggedInContent = document.getElementById('loggedInContent');
-              if (user) {
-                overlay.style.display = 'none';
-                loggedInContent.style.display = 'block';
-                loadUsers();
-              } else {
-                overlay.style.display = 'flex';
-                loggedInContent.style.display = 'none';
-                userList.innerHTML = '';
-                selectedUserDocId = null;
-                medList.innerHTML = '';
-                reminderInputs.innerHTML = '';
-                medications = [];
-              }
+                function switchView(viewName) {
+                    views.forEach(view => view.classList.add('view-hidden'));
+                    document.getElementById(`view-${viewName}`).classList.remove('view-hidden');
+                    
+                    navLinks.forEach(link => {
+                        link.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'font-bold');
+                        if (link.dataset.view === viewName) {
+                            link.classList.add('bg-gray-200', 'dark:bg-gray-700', 'font-bold');
+                            headerTitle.textContent = link.textContent;
+                        }
+                    });
+                }
+
+                navLinks.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const viewName = link.dataset.view;
+                        if (viewName !== 'dependants' && !selectedUserDocId) {
+                            showNotification('Please select a dependant first.', true);
+                            return;
+                        }
+                        switchView(viewName);
+                        document.getElementById('sidebar').classList.add('-translate-x-full');
+                        document.getElementById('sidebar-overlay').classList.add('hidden');
+                    });
+                });
+                
+                // --- Auth Logic ---
+                document.getElementById('register-button').onclick = async () => {
+                    authStatus.textContent = '';
+                    try {
+                        const userCredential = await authModule.createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                        showNotification(`Registered: ${userCredential.user.email}`);
+                        emailInput.value = '';
+                        passwordInput.value = '';
+                    } catch (e) {
+                         authStatus.textContent = `❌ ${e.message}`;
+                    }
+                };
+
+                document.getElementById('login-button').onclick = async () => {
+                     authStatus.textContent = '';
+                     try {
+                        await authModule.signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                     } catch (e) {
+                         authStatus.textContent = `❌ ${e.message}`;
+                     }
+                };
+                
+                document.getElementById('logout-button').onclick = () => {
+                    authModule.signOut(auth);
+                };
+
+                // --- Data Logic ---
+                document.getElementById('addUserBtn').onclick = async () => {
+                    const currentUser = auth.currentUser;
+                    if (!currentUser) return showNotification("Please log in first", true);
+
+                    const dependantData = {
+                        caregiver_uid: currentUser.uid, 
+                        email: secEmailInput.value, 
+                        password: secPassInput.value 
+                    };
+
+                    await firestoreModule.addDoc(firestoreModule.collection(db, "caregivers", currentUser.uid, "dependants"), dependantData);
+                    
+                    showNotification("Dependant added!");
+                    secEmailInput.value = '';
+                    secPassInput.value = '';
+                    loadUsers();
+                };
+
+                async function loadUsers() {
+                    const currentUser = auth.currentUser;
+                    if (!currentUser) return;
+                    
+                    userList.innerHTML = "";
+                    const q = firestoreModule.query(firestoreModule.collection(db, "caregivers", currentUser.uid, "dependants"));
+                    const results = await firestoreModule.getDocs(q);
+
+                    results.forEach(docSnap => {
+                        const li = document.createElement('li');
+                        li.className = 'p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors flex justify-between items-center';
+                        li.textContent = docSnap.data().email;
+                        li.onclick = async () => {
+                            selectedUserDocId = docSnap.id;
+                            selectedUserEmailSpan.textContent = docSnap.data().email;
+                            selectedUserBanner.classList.remove('hidden');
+                            await loadMedications();
+                            await loadAndDisplayReminders(); 
+                            showNotification(`Selected ${docSnap.data().email}`);
+                            document.querySelectorAll('#userList li').forEach(item => item.classList.remove('bg-blue-200', 'dark:bg-blue-800'));
+                            li.classList.add('bg-blue-200', 'dark:bg-blue-800');
+                        };
+                        userList.appendChild(li);
+                    });
+                }
+
+                 document.getElementById('addMedBtn').onclick = async () => {
+                    const currentUser = auth.currentUser;
+                    if (!currentUser || !selectedUserDocId) return showNotification("Select a dependant first.", true);
+                    
+                    const name = medNameInput.value.trim();
+                    const dose = medDosageInput.value.trim();
+                    if (name && dose) {
+                        const medPath = `caregivers/${currentUser.uid}/dependants/${selectedUserDocId}/medications`;
+                        await firestoreModule.addDoc(firestoreModule.collection(db, medPath), { name, dosage: dose });
+                        medNameInput.value = ''; medDosageInput.value = '';
+                        await loadMedications();
+                    }
+                };
+
+                async function loadMedications() {
+                    const currentUser = auth.currentUser;
+                    if (!currentUser || !selectedUserDocId) return;
+                    
+                    medications = [];
+                    medList.innerHTML = '';
+                    const medPath = `caregivers/${currentUser.uid}/dependants/${selectedUserDocId}/medications`;
+                    const q = firestoreModule.collection(db, medPath);
+                    const results = await firestoreModule.getDocs(q);
+                    
+                    results.forEach(docSnap => {
+                        const data = docSnap.data();
+                        const label = `${data.name} ${data.dosage}`;
+                        medications.push(label);
+                        const li = document.createElement('li');
+                        li.textContent = label;
+                        medList.appendChild(li);
+                    });
+                }
+                
+                async function loadAndDisplayReminders() {
+                    const currentUser = auth.currentUser;
+                    if (!currentUser || !selectedUserDocId) return;
+
+                    const reminderPath = `caregivers/${currentUser.uid}/dependants/${selectedUserDocId}/reminders`;
+                    const remindersSnapshot = await firestoreModule.getDocs(firestoreModule.collection(db, reminderPath));
+                    
+                    const existingReminders = [];
+                    remindersSnapshot.forEach(doc => {
+                        existingReminders.push(doc.data());
+                    });
+
+                    existingReminders.sort((a, b) => a.time.localeCompare(b.time));
+                    
+                    buildReminderInputs(existingReminders);
+                }
+
+                document.getElementById('generateRemindersBtn').onclick = () => {
+                    const count = parseInt(reminderCountInput.value) || 0;
+                    const emptyReminders = Array(count).fill({ time: '', medications: [] });
+                    buildReminderInputs(emptyReminders);
+                };
+                
+                function buildReminderInputs(reminders = []) {
+                    reminderInputsContainer.innerHTML = ''; 
+                    reminderCountInput.value = reminders.length;
+
+                    if (reminders.length === 0) {
+                        saveRemindersBtnContainer.classList.add('hidden');
+                        return;
+                    }
+                    saveRemindersBtnContainer.classList.remove('hidden');
+
+                    reminders.forEach((reminder, i) => {
+                        const container = document.createElement('div');
+                        container.className = 'bg-white dark:bg-gray-700 p-4 rounded-lg shadow-inner';
+                        
+                        const timeLabel = document.createElement('label');
+                        timeLabel.textContent = `Reminder ${i + 1} Time: `;
+                        timeLabel.className = 'font-semibold';
+                        const timeInput = document.createElement('input');
+                        timeInput.type = 'text';
+                        timeInput.className = 'reminder-time ml-2 p-2 rounded bg-gray-100 dark:bg-gray-600';
+                        timeInput.id = `time-${i}`;
+                        timeInput.value = reminder.time; 
+                        container.appendChild(timeLabel);
+                        container.appendChild(timeInput);
+                        
+                        const medContainer = document.createElement('div');
+                        medContainer.className = 'mt-4 grid grid-cols-2 md:grid-cols-3 gap-2';
+
+                        medications.forEach(med => {
+                            const medLabel = document.createElement('label');
+                            medLabel.className = 'flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600';
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.name = `med-${i}`;
+                            checkbox.value = med;
+                            checkbox.className = 'form-checkbox h-5 w-5 rounded text-blue-600';
+                            
+                            if (reminder.medications.includes(med)) {
+                                checkbox.checked = true;
+                            }
+                            medLabel.appendChild(checkbox);
+                            medLabel.appendChild(document.createTextNode(` ${med}`));
+                            medContainer.appendChild(medLabel);
+                        });
+                        container.appendChild(medContainer);
+                        reminderInputsContainer.appendChild(container);
+
+                        flatpickr(timeInput, { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true });
+                    });
+                }
+
+                document.getElementById('saveRemindersBtn').onclick = async () => {
+                    const currentUser = auth.currentUser;
+                    if (!currentUser || !selectedUserDocId) {
+                        showNotification("Select a dependant first.", true);
+                        return;
+                    }
+
+                    authStatus.textContent = "Saving..."; 
+
+                    const reminderPath = `caregivers/${currentUser.uid}/dependants/${selectedUserDocId}/reminders`;
+                    const remindersCollectionRef = firestoreModule.collection(db, reminderPath);
+
+                    try {
+                        const existingRemindersSnapshot = await firestoreModule.getDocs(remindersCollectionRef);
+                        const deleteBatch = firestoreModule.writeBatch(db);
+                        existingRemindersSnapshot.forEach(doc => {
+                            deleteBatch.delete(doc.ref);
+                        });
+                        await deleteBatch.commit();
+
+                        const count = parseInt(reminderCountInput.value);
+                        if (isNaN(count) || count === 0) {
+                             // Do nothing here, just proceed to update the timestamp
+                        } else {
+                             const createBatch = firestoreModule.writeBatch(db);
+                            for (let i = 0; i < count; i++) {
+                                const timeEl = document.getElementById(`time-${i}`);
+                                if (!timeEl) continue;
+
+                                const time = timeEl.value;
+                                const selectedMeds = Array.from(document.querySelectorAll(`input[name="med-${i}"]:checked`)).map(input => input.value);
+
+                                if (time && selectedMeds.length > 0) {
+                                    const reminderId = time.replace(/:/g, "-"); 
+                                    const newReminderRef = firestoreModule.doc(db, reminderPath, reminderId);
+                                    createBatch.set(newReminderRef, { time, medications: selectedMeds });
+                                }
+                            }
+                            await createBatch.commit();
+                        }
+                        
+                        // Update the timestamp on the parent dependant document to trigger the notification
+                        const dependantDocRef = firestoreModule.doc(db, "caregivers", currentUser.uid, "dependants", selectedUserDocId);
+                        await firestoreModule.updateDoc(dependantDocRef, {
+                            remindersLastUpdated: firestoreModule.serverTimestamp()
+                        });
+
+                        showNotification("Reminders saved successfully!");
+
+                    } catch (error) {
+                        console.error("Error saving reminders:", error);
+                        showNotification("Failed to save reminders. Please try again.", true);
+                    } finally {
+                        authStatus.textContent = ""; 
+                    }
+                };
+                
+                // --- Auth State Listener ---
+                authModule.onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        authPage.classList.add('hidden');
+                        appPage.classList.remove('hidden');
+                        loadUsers();
+                        switchView('dependants');
+                    } else {
+                        authPage.classList.remove('hidden');
+                        appPage.classList.add('hidden');
+                        userList.innerHTML = '';
+                        selectedUserDocId = null;
+                        medList.innerHTML = '';
+                        reminderInputsContainer.innerHTML = '';
+                        medications = [];
+                        selectedUserBanner.classList.add('hidden');
+                    }
+                });
+                
+                // Menu Toggle Logic
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('sidebar-overlay');
+                document.getElementById('open-menu-btn').addEventListener('click', () => {
+                    sidebar.classList.remove('-translate-x-full');
+                    overlay.classList.remove('hidden');
+                });
+                document.getElementById('close-menu-btn').addEventListener('click', () => {
+                    sidebar.classList.add('-translate-x-full');
+                    overlay.classList.add('hidden');
+                });
+                overlay.addEventListener('click', () => {
+                     sidebar.classList.add('-translate-x-full');
+                    overlay.classList.add('hidden');
+                });
+            
+            }).catch(error => {
+                console.error("Failed to load Firebase modules:", error);
+                document.body.innerHTML = `<div class="p-8 text-center text-red-500">Critical Error: Could not load app dependencies. Please check the browser console for details.</div>`;
             });
-          });
-        });
-      });
-    });
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', main);
+        } else {
+            main();
+        }
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </body>
 </html>
